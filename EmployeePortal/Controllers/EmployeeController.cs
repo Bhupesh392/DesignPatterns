@@ -6,6 +6,9 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using EmployeePortal.Builder.ConcreteBuilder;
+using EmployeePortal.Builder.Director;
+using EmployeePortal.Builder.IBuilder;
 using EmployeePortal.Factory.AbstractFactory;
 using EmployeePortal.Factory.FactoryMethod;
 using EmployeePortal.Manager;
@@ -16,6 +19,63 @@ namespace EmployeePortal.Controllers
     public class EmployeeController : Controller
     {
         private EmployeePortalEntities1 db = new EmployeePortalEntities1();
+
+        [HttpGet]
+        public ActionResult BuildSystem(int? employeeID)
+        {
+            EmployeeDetail employee = db.EmployeeDetails.Find(employeeID);
+            if (employee.ComputerDetails.Contains("Laptop"))
+                return View("BuildLaptop", employeeID);
+            else
+                return View("BuildDesktop", employeeID);
+        }
+        [HttpPost]
+        public ActionResult BuildLaptop(FormCollection formCollection)
+        {
+            EmployeeDetail employee = db.EmployeeDetails.Find(Convert.ToInt32(formCollection["employeeID"]));
+            //Concrete Builder
+            ISystemBuilder systemBuilder = new LaptopBuilder();
+            //Director
+            ConfigurationBuilder builder = new ConfigurationBuilder();
+            builder.BuildSystem(systemBuilder, formCollection);
+            ComputerSystem system = systemBuilder.GetSystem();
+
+            employee.SystemConfigurationDetails = string.Format("RAM : {0}, HDDSize : {1}, TouchScreen: {2}", system.RAM, system.HDDSize, system.TouchScreen);
+            db.Entry(employee).State = EntityState.Modified;
+            db.SaveChanges();
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public ActionResult BuildDesktop(FormCollection formCollection)
+        {
+            //Step 1
+            EmployeeDetail employee = db.EmployeeDetails.Find(Convert.ToInt32(formCollection["employeeID"]));
+            //Step 2 Concrete Builder
+            ISystemBuilder systemBuilder = new DesktopBuilder();
+            //Step 3 Director
+            ConfigurationBuilder builder = new ConfigurationBuilder();
+            builder.BuildSystem(systemBuilder, formCollection);
+            //Step 4 return the system
+            ComputerSystem system = systemBuilder.GetSystem();
+            employee.SystemConfigurationDetails = string.Format("RAM : {0}, HDDSize : {1}, Keyboard: {2}, Mouse : {3}", system.RAM, system.HDDSize, system.KeyBoard, system.Mouse);
+            db.Entry(employee).State = EntityState.Modified;
+            db.SaveChanges();
+            return RedirectToAction("Index");
+        }
+
+        //[HttpPost]
+        //public ActionResult BuildSystem(int employeeID, string RAM, string Drive)
+        //{
+        //    EmployeeDetail employee = db.EmployeeDetails.Find(employeeID);
+        //    ComputerSystem computerSystem = new ComputerSystem(RAM, Drive);
+        //    employee.SystemConfigurationDetails = computerSystem.Build();
+
+        //    db.Entry(employee).State = EntityState.Modified;
+        //    db.SaveChanges();
+
+        //    return RedirectToAction("Index");
+        //}
 
         // GET: Employee
         public ActionResult Index()
